@@ -18,10 +18,13 @@ export class TableConstructor {
    * @param {TableData} data - previously saved data for insert in table
    * @param {object} config - configuration of table
    * @param {object} api - Editor.js API
+   * @param {boolean} readOnly - read-only mode flag
    */
-  constructor(data, config, api) {
+  constructor(data, config, api, readOnly) {
+    this.readOnly = readOnly;
+
     /** creating table */
-    this._table = new Table();
+    this._table = new Table(readOnly);
     const size = this._resizeTable(data, config);
 
     this._fillTable(data, size);
@@ -30,6 +33,25 @@ export class TableConstructor {
     this._container = create('div', [CSS.editor, api.styles && api.styles.block], null, [
       this._table.htmlElement
     ]);
+
+    /** creating ToolBars */
+    this._verticalToolBar = new VerticalBorderToolBar();
+    this._horizontalToolBar = new HorizontalBorderToolBar();
+    this._table.htmlElement.appendChild(this._horizontalToolBar.htmlElement);
+    this._table.htmlElement.appendChild(this._verticalToolBar.htmlElement);
+
+    /** Activated elements */
+    this._hoveredCell = null;
+    this._activatedToolBar = null;
+    this._hoveredCellSide = null;
+
+    /** Timers */
+    this._plusButDelay = null;
+    this._toolbarShowDelay = null;
+
+    if (!this.readOnly) {
+      this._hangEvents();
+    }
   }
 
   /**

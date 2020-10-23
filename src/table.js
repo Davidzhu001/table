@@ -1,4 +1,5 @@
-import {create} from './documentUtils';
+
+import { create, getCoords, getSideByCoords } from './documentUtils';
 import './styles/table.pcss';
 
 const CSS = {
@@ -16,8 +17,11 @@ const CSS = {
 export class Table {
   /**
    * Creates
+   *
+   * @param {boolean} readOnly - read-only mode flag
    */
-  constructor() {
+  constructor(readOnly) {
+    this.readOnly = readOnly;
     this._numberOfColumns = 0;
     this._numberOfRows = 0;
     this._element = this._createTableWrapper();
@@ -93,6 +97,15 @@ export class Table {
   /**
    * Insert a column into table relatively to a current cell
    * @param {number} direction - direction of insertion. 0 is insertion before, 1 is insertion after
+    if (!this.readOnly) {
+      this._hangEvents();
+    }
+  }
+
+  /**
+   * Add column in table on index place
+   *
+   * @param {number} index - number in the array of columns, where new column to insert,-1 if insert at the end
    */
   insertColumn(direction = 0) {
     direction = Math.min(Math.max(direction, 0), 1);
@@ -134,6 +147,10 @@ export class Table {
    * Insert a row into table relatively to a current cell
    * @param {number} direction - direction of insertion. 0 is insertion before, 1 is insertion after
    * @return {HTMLElement} row
+   * Add row in table on index place
+   *
+   * @param {number} index - number in the array of columns, where new column to insert,-1 if insert at the end
+   * @returns {HTMLElement} row
    */
   insertRow(direction = 0) {
     direction = Math.min(Math.max(direction, 0), 1);
@@ -147,6 +164,7 @@ export class Table {
     this._numberOfRows++;
 
     this._fillRow(row);
+
     return row;
   };
 
@@ -164,8 +182,9 @@ export class Table {
   };
 
   /**
-   * get html table wrapper
-   * @return {HTMLElement}
+   * get html element of table
+   *
+   * @returns {HTMLElement}
    */
   get htmlElement() {
     return this._element;
@@ -173,38 +192,42 @@ export class Table {
 
   /**
    * get real table tag
-   * @return {HTMLElement}
+   *
+   * @returns {HTMLElement}
    */
   get body() {
     return this._table;
   }
 
   /**
-   * @private
+   * returns selected/editable cell
    *
-   * Creates table structure
-   * @return {HTMLElement} tbody - where rows will be
+   * @returns {HTMLElement}
+   */
+  get selectedCell() {
+    return this._selectedCell;
+  }
+
+  /**
+   * @private
+   * @returns {HTMLElement} tbody - where rows will be
    */
   _createTableWrapper() {
-    return create('div', [ CSS.wrapper ], null, [
-      create('table', [ CSS.table ])
-    ]);
+
+    return create('div', [ CSS.wrapper ], null, [ create('table', [ CSS.table ]) ]);
   }
 
   /**
    * @private
-   *
-   * Create editable area of cell
-   * @return {HTMLElement} - the area
+   * @returns {HTMLElement} - the area
    */
   _createContenteditableArea() {
-    return create('div', [ CSS.inputField ], { contenteditable: 'true' });
+
+    return create('div', [ CSS.inputField ], { contenteditable: !this.readOnly });
   }
 
   /**
    * @private
-   *
-   * Fills the empty cell of the editable area
    * @param {HTMLElement} cell - empty cell
    */
   _fillCell(cell) {
@@ -216,8 +239,6 @@ export class Table {
 
   /**
    * @private
-   *
-   * Fills the empty row with cells  in the size of numberOfColumns
    * @param row = the empty row
    */
   _fillRow(row) {
@@ -230,8 +251,6 @@ export class Table {
 
   /**
    * @private
-   *
-   * hang necessary events
    */
   _attachEvents() {
     this._table.addEventListener('focus', (event) => {
@@ -253,20 +272,29 @@ export class Table {
 
   /**
    * @private
-   *
-   * When you focus on an editable field, remembers the cell
    * @param {FocusEvent} event
    */
   _focusEditField(event) {
-    this.selectedCell = event.target.tagName === 'TD'
-      ? event.target
-      : event.target.closest('td');
+
+    if (!event.target.classList.contains(CSS.inputField)) {
+      return;
+    }
+    this._selectedCell = event.target.closest('.' + CSS.cell);
   }
 
   /**
    * @private
-   *
-   * When enter is pressed when editing a field
+   * @param {FocusEvent} event
+   */
+  _blurEditField(event) {
+    if (!event.target.classList.contains(CSS.inputField)) {
+      return;
+    }
+    this._selectedCell = null;
+  }
+
+  /**
+   * @private
    * @param {KeyboardEvent} event
    */
   _pressedEnterInEditField(event) {
@@ -280,8 +308,6 @@ export class Table {
 
   /**
    * @private
-   *
-   * When clicking on a cell
    * @param {MouseEvent} event
    */
   _clickedOnCell(event) {
@@ -298,6 +324,8 @@ export class Table {
    *
    * detects button presses when editing a table's content
    * @param {KeyboardEvent} event
+   * @param {MouseEvent} event
+
    */
   _containerKeydown(event) {
     if (event.key === 'Enter' && event.ctrlKey) {
@@ -315,5 +343,11 @@ export class Table {
     const newRow = this.insertRow(1);
 
     newRow.cells[0].click();
+    event.target.dispatchEvent(new CustomEvent('mouseInActivatingArea', {
+      detail: {
+        side: side,
+      },
+      bubbles: true,
+    }));
   }
 }

@@ -18,17 +18,28 @@ const Icons = {
 };
 
 const CSS = {
-  input: 'tc-table__inp'
+  input: 'tc-table__inp',
 };
 
 /**
  *  Tool for table's creating
+ *
  *  @typedef {object} TableData - object with the data transferred to form a table
  *  @property {string[][]} content - two-dimensional array which contains table content
  */
 class Table {
   /**
+   * Notify core that read-only mode is supported
+   *
+   * @returns {boolean}
+   */
+  static get isReadOnlySupported() {
+    return true;
+  }
+
+  /**
    * Allow to press Enter inside the CodeTool textarea
+   *
    * @returns {boolean}
    * @public
    */
@@ -41,7 +52,7 @@ class Table {
    * icon - Tool icon's SVG
    * title - title to show in toolbox
    *
-   * @return {{icon: string, title: string}}
+   * @returns {{icon: string, title: string}}
    */
   static get toolbox() {
     return {
@@ -52,14 +63,19 @@ class Table {
 
   /**
    * Render plugin`s main Element and fill it with saved data
+   *
    * @param {TableData} data — previously saved data
    * @param {object} config - user config for Tool
    * @param {object} api - Editor.js API
+   * @param {boolean} readOnly - read-only mode flag
    */
-  constructor({ data, config, api }) {
-    this.api = api;
 
-    this._tableConstructor = new TableConstructor(data, config, api);
+  constructor({ data, config, api, readOnly }) {
+    this.api = api;
+    this.readOnly = readOnly;
+
+    this._tableConstructor = new TableConstructor(data, config, api, readOnly);
+
 
     this.actions = [
       {
@@ -150,6 +166,7 @@ class Table {
 
   /**
    * Return Tool's view
+   *
    * @returns {HTMLDivElement}
    * @public
    */
@@ -159,8 +176,10 @@ class Table {
 
   /**
    * Extract Tool's data from the view
+   *
+   * @param {HTMLElement} toolsContent - Tool HTML element
+   *
    * @returns {TableData} - saved data
-   * @public
    */
   save(toolsContent) {
     const table = toolsContent.querySelector('table');
@@ -180,16 +199,14 @@ class Table {
     }
 
     return {
-      content: data
+      content: data,
     };
   }
 
   /**
    * @private
-   *
-   * Check input field is empty
    * @param {HTMLElement} input - input field
-   * @return {boolean}
+   * @returns {boolean}
    */
   _isEmpty(input) {
     return !input.textContent.trim();
